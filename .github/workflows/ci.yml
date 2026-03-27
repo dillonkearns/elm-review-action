@@ -61,8 +61,13 @@ jobs:
         working-directory: ${{ github.workspace }}/__tests__/elm
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Verify elm-review found errors
-      if: steps.elm-review.outcome == 'success'
+    - name: Verify elm-review created a failing check
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        echo "::error::Expected elm-review to report errors but it passed"
-        exit 1
+        conclusion=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs \
+          --jq '.check_runs[] | select(.name == "elm-review (errors expected)") | .conclusion')
+        if [ "$conclusion" != "failure" ]; then
+          echo "::error::Expected check conclusion 'failure' but got '$conclusion'"
+          exit 1
+        fi
